@@ -5,6 +5,7 @@ from decimal import Decimal
 from unittest.case import TestCase
 from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
+import eventsourcing.domain
 from eventsourcing.domain import (
     Aggregate,
     AggregateCreated,
@@ -12,6 +13,8 @@ from eventsourcing.domain import (
     OriginatorIDError,
     OriginatorVersionError,
     TAggregate,
+    Version,
+    VersionProtocol,
 )
 from eventsourcing.tests.domain import (
     AccountClosedError,
@@ -146,7 +149,7 @@ class TestAggregateCreation(TestCase):
         after_created = Aggregate.Event.create_timestamp()
         self.assertIsInstance(a, Aggregate)
         self.assertIsInstance(a.id, UUID)
-        self.assertIsInstance(a.version, int)
+        self.assertIsInstance(a.version, Version)
         self.assertEqual(a.version, 1)
         self.assertIsInstance(a.created_on, datetime)
         self.assertIsInstance(a.modified_on, datetime)
@@ -167,7 +170,7 @@ class TestAggregateCreation(TestCase):
 
         a = MyAggregate1()
         self.assertIsInstance(a.id, UUID)
-        self.assertIsInstance(a.version, int)
+        self.assertIsInstance(a.version, Version)
         self.assertEqual(a.version, 1)
         self.assertIsInstance(a.created_on, datetime)
         self.assertIsInstance(a.modified_on, datetime)
@@ -196,7 +199,7 @@ class TestAggregateCreation(TestCase):
 
         a = MyAggregate3()
         self.assertIsInstance(a.id, UUID)
-        self.assertIsInstance(a.version, int)
+        self.assertIsInstance(a.version, Version)
         self.assertIsInstance(a.created_on, datetime)
         self.assertIsInstance(a.modified_on, datetime)
 
@@ -215,7 +218,7 @@ class TestAggregateCreation(TestCase):
 
         a = MyAggregate1()
         self.assertIsInstance(a.id, UUID)
-        self.assertIsInstance(a.version, int)
+        self.assertIsInstance(a.version, Version)
         self.assertIsInstance(a.created_on, datetime)
         self.assertIsInstance(a.modified_on, datetime)
 
@@ -245,7 +248,7 @@ class TestAggregateCreation(TestCase):
 
         a = MyAggregate3()
         self.assertIsInstance(a.id, UUID)
-        self.assertIsInstance(a.version, int)
+        self.assertIsInstance(a.version, Version)
         self.assertIsInstance(a.created_on, datetime)
         self.assertIsInstance(a.modified_on, datetime)
 
@@ -1159,3 +1162,42 @@ class TestBankAccount(TestCase):
         # Collect pending events.
         pending = account.collect_events()
         assert len(pending) == 7
+
+
+class TestVersionProtocol(TestCase):
+    @dataclass(frozen=True)
+    class DecimalVersion(VersionProtocol):
+        _value: float
+
+        @classmethod
+        def initial(cls) -> "VersionProtocol":
+            return TestVersionProtocol.DecimalVersion(0.0)
+
+        def next(self) -> "VersionProtocol":
+            return TestVersionProtocol.DecimalVersion(self._value + 0.1)
+
+        @classmethod
+        def decode(cls, value: str) -> "VersionProtocol":
+            return TestVersionProtocol.DecimalVersion(float(value))
+
+        def encode(self) -> str:
+            return str(self._value)
+
+    def test_trigger_event(self):
+        eventsourcing.domain.VERSION_TYPE = self.DecimalVersion
+
+        try:
+            a = Aggregate()
+
+            # Check the aggregate can trigger further events.
+            a.trigger_event(AggregateEvent)
+            self.assertLess(a.created_on, a.modified_on)
+
+            pending = a.collect_events()
+            self.assertEqual(len(pending), 2)
+            self.assertIsInstance(pending[0], AggregateCreated)
+            self.assertEqual(pending[0].originator_version, self.DecimalVersion(0.0))
+            self.assertIsInstance(pending[1], AggregateEvent)
+            self.assertEqual(pending[1].originator_version, self.DecimalVersion(0.1))
+        finally:
+            eventsourcing.domain.VERSION_TYPE = int

@@ -22,7 +22,7 @@ import psycopg2
 import psycopg2.errors
 import psycopg2.extras
 from psycopg2.errorcodes import DUPLICATE_PREPARED_STATEMENT
-from psycopg2.extensions import connection, cursor
+from psycopg2.extensions import AsIs, connection, cursor, register_adapter
 
 from eventsourcing.persistence import (
     AggregateRecorder,
