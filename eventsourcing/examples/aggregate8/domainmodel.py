@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import List
+from typing import List, Optional  # Optional because of Version
 from uuid import UUID
 
 from pydantic import BaseModel, Extra
@@ -11,13 +11,14 @@ from eventsourcing.domain import (
     CanInitAggregate,
     CanMutateAggregate,
     CanSnapshotAggregate,
+    Version,
     event,
 )
 
 
 class DomainEvent(BaseModel):
     originator_id: UUID
-    originator_version: int
+    originator_version: Version
     timestamp: datetime
 
     class Config:

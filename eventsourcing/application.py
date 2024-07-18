@@ -26,21 +26,22 @@ from uuid import UUID
 from warnings import warn
 
 # For backwards compatibility of import statements...
-from eventsourcing.domain import LogEvent  # noqa: F401
 from eventsourcing.domain import TLogEvent  # noqa: F401
 from eventsourcing.domain import create_utc_datetime_now  # noqa: F401
-from eventsourcing.domain import (
+from eventsourcing.domain import (  # noqa: F401
     Aggregate,
     CanMutateProtocol,
     CollectEventsProtocol,
     DomainEventProtocol,
     EventSourcingError,
+    LogEvent,
     MutableOrImmutableAggregate,
     ProgrammingError,
     Snapshot,
     SnapshotProtocol,
     TDomainEvent,
     TMutableOrImmutableAggregate,
+    Version,
 )
 from eventsourcing.persistence import (
     ApplicationRecorder,
@@ -54,6 +55,7 @@ from eventsourcing.persistence import (
     Tracking,
     Transcoder,
     UUIDAsHex,
+    VersionAsStr,
 )
 from eventsourcing.utils import Environment, EnvType, strtobool
 
@@ -252,7 +254,7 @@ class Repository:
     def get(
         self,
         aggregate_id: UUID,
-        version: Optional[int] = None,
+        version: Optional[Version] = None,
         projector_func: ProjectorFunction[
             TMutableOrImmutableAggregate, TDomainEvent
         ] = project_aggregate,
@@ -312,10 +314,10 @@ class Repository:
     def _reconstruct_aggregate(
         self,
         aggregate_id: UUID,
-        version: Optional[int],
+        version: Optional[Version],
         projector_func: ProjectorFunction[TMutableOrImmutableAggregate, TDomainEvent],
     ) -> TMutableOrImmutableAggregate:
-        gt: Optional[int] = None
+        gt: Optional[Version] = None
 
         if self.snapshot_store is not None:
             # Try to get a snapshot.
@@ -637,9 +639,9 @@ class Application:
     name = "Application"
     env: EnvType = {}
     is_snapshotting_enabled: bool = False
-    snapshotting_intervals: Optional[
-        Dict[Type[MutableOrImmutableAggregate], int]
-    ] = None
+    snapshotting_intervals: Optional[Dict[Type[MutableOrImmutableAggregate], int]] = (
+        None
+    )
     snapshotting_projectors: Optional[
         Dict[Type[MutableOrImmutableAggregate], ProjectorFunction[Any, Any]]
     ] = None
@@ -677,9 +679,9 @@ class Application:
         self._repository = self.construct_repository()
         self._notification_log = self.construct_notification_log()
         self.closing = Event()
-        self.previous_max_notification_id: Optional[
-            int
-        ] = self.recorder.max_notification_id()
+        self.previous_max_notification_id: Optional[int] = (
+            self.recorder.max_notification_id()
+        )
 
     @property
     def repository(self) -> Repository:
@@ -749,6 +751,7 @@ class Application:
         transcoder.register(UUIDAsHex())
         transcoder.register(DecimalAsStr())
         transcoder.register(DatetimeAsISO())
+        transcoder.register(VersionAsStr())
 
     def construct_recorder(self) -> ApplicationRecorder:
         """
@@ -884,7 +887,7 @@ class Application:
     def take_snapshot(
         self,
         aggregate_id: UUID,
-        version: Optional[int] = None,
+        version: Optional[Version] = None,
         projector_func: ProjectorFunction[
             TMutableOrImmutableAggregate, TDomainEvent
         ] = project_aggregate,
@@ -971,7 +974,7 @@ class EventSourcedLog(Generic[TDomainEvent]):
 
     def trigger_event(
         self,
-        next_originator_version: Optional[int] = None,
+        next_originator_version: Optional[Version] = None,
         **kwargs: Any,
     ) -> TDomainEvent:
         """
@@ -986,7 +989,7 @@ class EventSourcedLog(Generic[TDomainEvent]):
     def _trigger_event(
         self,
         logged_cls: Optional[Type[T]],
-        next_originator_version: Optional[int] = None,
+        next_originator_version: Optional[Version] = None,
         **kwargs: Any,
     ) -> T:
         """
@@ -1027,8 +1030,8 @@ class EventSourcedLog(Generic[TDomainEvent]):
 
     def get(
         self,
-        gt: Optional[int] = None,
-        lte: Optional[int] = None,
+        gt: Optional[Version] = None,
+        lte: Optional[Version] = None,
         desc: bool = False,
         limit: Optional[int] = None,
     ) -> Iterator[TDomainEvent]:

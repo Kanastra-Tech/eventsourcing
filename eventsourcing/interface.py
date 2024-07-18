@@ -7,6 +7,7 @@ from typing import Generic, List, Optional, Sequence
 from uuid import UUID
 
 from eventsourcing.application import NotificationLog, Section, TApplication
+from eventsourcing.domain import Version
 from eventsourcing.persistence import Notification
 
 
@@ -58,7 +59,7 @@ class NotificationLogJSONService(NotificationLogInterface, Generic[TApplication]
                     {
                         "id": item.id,
                         "originator_id": item.originator_id.hex,
-                        "originator_version": item.originator_version,
+                        "originator_version": str(item.originator_version),
                         "topic": item.topic,
                         "state": b64encode(item.state).decode("utf8"),
                     }
@@ -78,7 +79,7 @@ class NotificationLogJSONService(NotificationLogInterface, Generic[TApplication]
                 {
                     "id": notification.id,
                     "originator_id": notification.originator_id.hex,
-                    "originator_version": notification.originator_version,
+                    "originator_version": str(notification.originator_version),
                     "topic": notification.topic,
                     "state": b64encode(notification.state).decode("utf8"),
                 }
@@ -113,7 +114,7 @@ class NotificationLogJSONClient(NotificationLog):
                 Notification(
                     id=item["id"],
                     originator_id=UUID(item["originator_id"]),
-                    originator_version=item["originator_version"],
+                    originator_version=Version.from_string(item["originator_version"]),
                     topic=item["topic"],
                     state=b64decode(item["state"].encode("utf8")),
                 )

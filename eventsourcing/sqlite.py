@@ -7,6 +7,7 @@ from types import TracebackType
 from typing import Any, Iterator, List, Optional, Sequence, Type, Union
 from uuid import UUID
 
+from eventsourcing.domain import Version
 from eventsourcing.persistence import (
     AggregateRecorder,
     ApplicationRecorder,
@@ -31,6 +32,8 @@ from eventsourcing.persistence import (
 from eventsourcing.utils import Environment, strtobool
 
 SQLITE3_DEFAULT_LOCK_TIMEOUT = 5
+
+sqlite3.register_adapter(Version, lambda version: str(version))
 
 
 class SQLiteCursor(BaseCursor):

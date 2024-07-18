@@ -12,6 +12,7 @@ from eventsourcing.domain import (
     OriginatorIDError,
     OriginatorVersionError,
     TAggregate,
+    Version,
 )
 from eventsourcing.tests.domain import (
     AccountClosedError,
@@ -146,7 +147,7 @@ class TestAggregateCreation(TestCase):
         after_created = Aggregate.Event.create_timestamp()
         self.assertIsInstance(a, Aggregate)
         self.assertIsInstance(a.id, UUID)
-        self.assertIsInstance(a.version, int)
+        self.assertIsInstance(a.version, Version)
         self.assertEqual(a.version, 1)
         self.assertIsInstance(a.created_on, datetime)
         self.assertIsInstance(a.modified_on, datetime)
@@ -167,7 +168,7 @@ class TestAggregateCreation(TestCase):
 
         a = MyAggregate1()
         self.assertIsInstance(a.id, UUID)
-        self.assertIsInstance(a.version, int)
+        self.assertIsInstance(a.version, Version)
         self.assertEqual(a.version, 1)
         self.assertIsInstance(a.created_on, datetime)
         self.assertIsInstance(a.modified_on, datetime)
@@ -196,7 +197,7 @@ class TestAggregateCreation(TestCase):
 
         a = MyAggregate3()
         self.assertIsInstance(a.id, UUID)
-        self.assertIsInstance(a.version, int)
+        self.assertIsInstance(a.version, Version)
         self.assertIsInstance(a.created_on, datetime)
         self.assertIsInstance(a.modified_on, datetime)
 
@@ -215,7 +216,7 @@ class TestAggregateCreation(TestCase):
 
         a = MyAggregate1()
         self.assertIsInstance(a.id, UUID)
-        self.assertIsInstance(a.version, int)
+        self.assertIsInstance(a.version, Version)
         self.assertIsInstance(a.created_on, datetime)
         self.assertIsInstance(a.modified_on, datetime)
 
@@ -245,7 +246,7 @@ class TestAggregateCreation(TestCase):
 
         a = MyAggregate3()
         self.assertIsInstance(a.id, UUID)
-        self.assertIsInstance(a.version, int)
+        self.assertIsInstance(a.version, Version)
         self.assertIsInstance(a.created_on, datetime)
         self.assertIsInstance(a.modified_on, datetime)
 
@@ -960,7 +961,7 @@ class TestSubsequentEvents(TestCase):
 
         expect = (
             f"Aggregate(id={a.id!r}, "
-            "version=1, "
+            "version=Version('1'), "
             f"created_on={a.created_on!r}, "
             f"modified_on={a.modified_on!r}"
             ")"
@@ -971,7 +972,7 @@ class TestSubsequentEvents(TestCase):
 
         expect = (
             f"Aggregate(id={a.id!r}, "
-            "version=2, "
+            "version=Version('2'), "
             f"created_on={a.created_on!r}, "
             f"modified_on={a.modified_on!r}"
             ")"
@@ -991,7 +992,7 @@ class TestSubsequentEvents(TestCase):
         a = MyAggregate1(a=1)
         expect = (
             f"MyAggregate1(id={a.id!r}, "
-            "version=1, "
+            "version=Version('1'), "
             f"created_on={a.created_on!r}, "
             f"modified_on={a.modified_on!r}, "
             f"a=1"
@@ -1003,7 +1004,7 @@ class TestSubsequentEvents(TestCase):
 
         expect = (
             f"MyAggregate1(id={a.id!r}, "
-            "version=2, "
+            "version=Version('2'), "
             f"created_on={a.created_on!r}, "
             f"modified_on={a.modified_on!r}, "
             f"a=1, "
@@ -1025,7 +1026,7 @@ class TestSubsequentEvents(TestCase):
         a = MyAggregate2(a=1)
         expect = (
             f"MyAggregate2(id={a.id!r}, "
-            "version=1, "
+            "version=Version('1'), "
             f"created_on={a.created_on!r}, "
             f"modified_on={a.modified_on!r}, "
             f"a=1"
@@ -1037,7 +1038,7 @@ class TestSubsequentEvents(TestCase):
 
         expect = (
             f"MyAggregate2(id={a.id!r}, "
-            "version=2, "
+            "version=Version('2'), "
             f"created_on={a.created_on!r}, "
             f"modified_on={a.modified_on!r}, "
             f"a=1, "

@@ -27,7 +27,7 @@ from typing import (
 from uuid import UUID
 from warnings import warn
 
-from eventsourcing.domain import DomainEventProtocol, EventSourcingError
+from eventsourcing.domain import DomainEventProtocol, EventSourcingError, Version
 from eventsourcing.utils import (
     Environment,
     TopicError,
@@ -193,6 +193,22 @@ class DatetimeAsISO(Transcoding):
         return datetime.fromisoformat(data)
 
 
+class VersionAsStr(Transcoding):
+    """
+    Transcoding that represents :class:`Version` objects as strings.
+    """
+
+    type = Version
+    name = "version_str"
+
+    def encode(self, obj: Version) -> str:
+        return str(obj)
+
+    def decode(self, data: str) -> Version:
+        assert isinstance(data, str)
+        return Version.from_string(data)
+
+
 @dataclass(frozen=True)
 class StoredEvent:
     """
@@ -203,13 +219,13 @@ class StoredEvent:
     Constructor parameters:
 
     :param UUID originator_id: ID of the originating aggregate
-    :param int originator_version: version of the originating aggregate
+    :param Version originator_version: version of the originating aggregate
     :param str topic: topic of the domain event object class
     :param bytes state: serialised state of the domain event object
     """
 
     originator_id: uuid.UUID
-    originator_version: int
+    originator_version: Version
     topic: str
     state: bytes
 
@@ -423,8 +439,8 @@ class AggregateRecorder(ABC):
     def select_events(
         self,
         originator_id: UUID,
-        gt: Optional[int] = None,
-        lte: Optional[int] = None,
+        gt: Optional[Version] = None,
+        lte: Optional[Version] = None,
         desc: bool = False,
         limit: Optional[int] = None,
     ) -> List[StoredEvent]:
@@ -549,8 +565,8 @@ class EventStore:
     def get(
         self,
         originator_id: UUID,
-        gt: Optional[int] = None,
-        lte: Optional[int] = None,
+        gt: Optional[Version] = None,
+        lte: Optional[Version] = None,
         desc: bool = False,
         limit: Optional[int] = None,
     ) -> Iterator[DomainEventProtocol]:
