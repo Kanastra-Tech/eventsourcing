@@ -55,7 +55,7 @@ from eventsourcing.persistence import (
     Tracking,
     Transcoder,
     UUIDAsHex,
-    VersionAsStr,
+    StrVersionAsStr,
 )
 from eventsourcing.utils import Environment, EnvType, strtobool
 
@@ -751,7 +751,7 @@ class Application:
         transcoder.register(UUIDAsHex())
         transcoder.register(DecimalAsStr())
         transcoder.register(DatetimeAsISO())
-        transcoder.register(VersionAsStr())
+        transcoder.register(StrVersionAsStr())
 
     def construct_recorder(self) -> ApplicationRecorder:
         """

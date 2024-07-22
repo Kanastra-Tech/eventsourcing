@@ -39,41 +39,38 @@ from eventsourcing.utils import get_method_name, get_topic, resolve_topic
 TZINFO: tzinfo = resolve_topic(os.getenv("TZINFO_TOPIC", "datetime:timezone.utc"))
 
 
+# TODO: create a Protocol here somehow to move this class to our app
 @dataclass(frozen=True)
-class Version:
+class StrVersion:
     _str_value: Optional[str]
     _int_value: int
 
     @classmethod
-    def from_string(cls, string: str) -> "Version":
-        if ":" in string:
-            str_value, int_value = string.split(":")
-            return Version(str_value, int(int_value))
-        return Version(None, int(string))
+    def initial(cls, str_value: Optional[str] = None) -> Version:
+        if str_value is None:
+            return 1
 
-    @classmethod
-    def initial(cls, str_value: Optional[str] = None) -> "Version":
-        return Version(str_value, 1)
+        return StrVersion(str_value, 1)
 
-    def __add__(self, other) -> "Version":
+    def __add__(self, other) -> Version:
         if isinstance(other, int):
-            return Version(self._str_value, self._int_value + other)
-        elif isinstance(other, Version):
+            return StrVersion(self._str_value, self._int_value + other)
+        elif isinstance(other, StrVersion):
             if self._str_value != other._str_value:
                 raise ValueError("The str value must be the same")
 
-            return Version(self._str_value, self._int_value + other._int_value)
+            return StrVersion(self._str_value, self._int_value + other._int_value)
 
         raise NotImplementedError
 
-    def __sub__(self, other) -> "Version":
+    def __sub__(self, other) -> Version:
         if isinstance(other, int):
-            return Version(self._str_value, self._int_value - other)
-        elif isinstance(other, Version):
+            return StrVersion(self._str_value, self._int_value - other)
+        elif isinstance(other, StrVersion):
             if self._str_value != other._str_value:
                 raise ValueError("The str value must be the same")
 
-            return Version(self._str_value, self._int_value - other._int_value)
+            return StrVersion(self._str_value, self._int_value - other._int_value)
 
         raise NotImplementedError
 
@@ -86,7 +83,7 @@ class Version:
     def __eq__(self, other) -> bool:
         if isinstance(other, int):
             return self._int_value == other
-        elif isinstance(other, Version):
+        elif isinstance(other, StrVersion):
             return (
                 self._str_value == other._str_value
                 and self._int_value == other._int_value
@@ -97,7 +94,7 @@ class Version:
     def __le__(self, other) -> bool:
         if isinstance(other, int):
             return self._int_value <= other
-        elif isinstance(other, Version):
+        elif isinstance(other, StrVersion):
             if self._str_value != other._str_value:
                 raise ValueError("The str value must be the same")
 
@@ -108,7 +105,7 @@ class Version:
     def __gt__(self, other) -> bool:
         if isinstance(other, int):
             return self._int_value > other
-        elif isinstance(other, Version):
+        elif isinstance(other, StrVersion):
             if self._str_value != other._str_value:
                 raise ValueError("The str value must be the same")
 
@@ -117,13 +114,21 @@ class Version:
         raise NotImplementedError
 
     def __str__(self) -> str:
-        if self._str_value is None:
-            return str(self._int_value)
-
         return f"{self._str_value}:{self._int_value}"
 
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, str(self))
+
+
+Version = Union[StrVersion, int]
+
+
+def build_version(value: str | int) -> Version:
+    if isinstance(value, int) or ":" not in value:
+        return int(value)
+
+    str_value, int_value = value.split(":")
+    return StrVersion(str_value, int(int_value))
 
 
 @runtime_checkable
@@ -967,7 +972,7 @@ class MetaAggregate(type, Generic[TAggregate]):
     Initialises aggregate classes by defining event classes.
     """
 
-    INITIAL_VERSION = Version.initial()
+    INITIAL_VERSION = 1
 
     class Event(AggregateEvent):
         pass

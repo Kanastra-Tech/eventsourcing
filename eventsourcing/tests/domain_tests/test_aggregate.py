@@ -961,7 +961,7 @@ class TestSubsequentEvents(TestCase):
 
         expect = (
             f"Aggregate(id={a.id!r}, "
-            "version=Version('1'), "
+            "version=1, "
             f"created_on={a.created_on!r}, "
             f"modified_on={a.modified_on!r}"
             ")"
@@ -972,7 +972,7 @@ class TestSubsequentEvents(TestCase):
 
         expect = (
             f"Aggregate(id={a.id!r}, "
-            "version=Version('2'), "
+            "version=2, "
             f"created_on={a.created_on!r}, "
             f"modified_on={a.modified_on!r}"
             ")"
@@ -992,7 +992,7 @@ class TestSubsequentEvents(TestCase):
         a = MyAggregate1(a=1)
         expect = (
             f"MyAggregate1(id={a.id!r}, "
-            "version=Version('1'), "
+            "version=1, "
             f"created_on={a.created_on!r}, "
             f"modified_on={a.modified_on!r}, "
             f"a=1"
@@ -1004,7 +1004,7 @@ class TestSubsequentEvents(TestCase):
 
         expect = (
             f"MyAggregate1(id={a.id!r}, "
-            "version=Version('2'), "
+            "version=2, "
             f"created_on={a.created_on!r}, "
             f"modified_on={a.modified_on!r}, "
             f"a=1, "
@@ -1026,7 +1026,7 @@ class TestSubsequentEvents(TestCase):
         a = MyAggregate2(a=1)
         expect = (
             f"MyAggregate2(id={a.id!r}, "
-            "version=Version('1'), "
+            "version=1, "
             f"created_on={a.created_on!r}, "
             f"modified_on={a.modified_on!r}, "
             f"a=1"
@@ -1038,7 +1038,7 @@ class TestSubsequentEvents(TestCase):
 
         expect = (
             f"MyAggregate2(id={a.id!r}, "
-            "version=Version('2'), "
+            "version=2, "
             f"created_on={a.created_on!r}, "
             f"modified_on={a.modified_on!r}, "
             f"a=1, "
