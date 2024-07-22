@@ -338,7 +338,7 @@ class SQLiteAggregateRecorder(AggregateRecorder):
                 stored_events.append(
                     StoredEvent(
                         originator_id=UUID(row["originator_id"]),
-                        originator_version=row["originator_version"],
+                        originator_version=Version.from_string(row["originator_version"]),
                         topic=row["topic"],
                         state=row["state"],
                     )
@@ -429,7 +429,7 @@ class SQLiteApplicationRecorder(
                     Notification(
                         id=row["rowid"],
                         originator_id=UUID(row["originator_id"]),
-                        originator_version=row["originator_version"],
+                        originator_version=Version.from_string(row["originator_version"]),
                         topic=row["topic"],
                         state=row["state"],
                     )
