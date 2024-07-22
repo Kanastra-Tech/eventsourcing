@@ -42,15 +42,8 @@ TZINFO: tzinfo = resolve_topic(os.getenv("TZINFO_TOPIC", "datetime:timezone.utc"
 # TODO: create a Protocol here somehow to move this class to our app
 @dataclass(frozen=True)
 class StrVersion:
-    _str_value: Optional[str]
+    _str_value: str
     _int_value: int
-
-    @classmethod
-    def initial(cls, str_value: Optional[str] = None) -> Version:
-        if str_value is None:
-            return 1
-
-        return StrVersion(str_value, 1)
 
     def __add__(self, other) -> Version:
         if isinstance(other, int):
