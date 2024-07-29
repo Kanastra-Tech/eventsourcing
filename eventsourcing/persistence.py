@@ -27,7 +27,12 @@ from typing import (
 from uuid import UUID
 from warnings import warn
 
-from eventsourcing.domain import DomainEventProtocol, EventSourcingError, StrVersion, Version, build_version
+from eventsourcing.domain import (
+    DomainEventProtocol,
+    EventSourcingError,
+    Version,
+    VersionProtocol,
+)
 from eventsourcing.utils import (
     Environment,
     TopicError,
@@ -193,20 +198,22 @@ class DatetimeAsISO(Transcoding):
         return datetime.fromisoformat(data)
 
 
-class StrVersionAsStr(Transcoding):
+class VersionProtocolAsStr(Transcoding):
     """
-    Transcoding that represents :class:`StrVersion` objects as strings.
+    Transcoding that represents :class:`VersionProtocol` objects as strings.
     """
 
-    type = StrVersion
-    name = "version_str"
+    type = VersionProtocol
+    name = "version"
 
-    def encode(self, obj: StrVersion) -> str:
-        return str(obj)
+    def encode(self, obj: VersionProtocol) -> str:
+        topic = get_topic(obj.__class__)
+        return f"{topic}||{obj.encode()}"
 
-    def decode(self, data: str) -> StrVersion:
+    def decode(self, data: str) -> VersionProtocol:
         assert isinstance(data, str)
-        return cast(StrVersion, build_version(data))
+        topic, version = data.split("||")
+        return resolve_topic(topic).decode(version)
 
 
 @dataclass(frozen=True)

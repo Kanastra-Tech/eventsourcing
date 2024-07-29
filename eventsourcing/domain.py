@@ -37,91 +37,45 @@ from uuid import UUID, uuid4
 from eventsourcing.utils import get_method_name, get_topic, resolve_topic
 
 TZINFO: tzinfo = resolve_topic(os.getenv("TZINFO_TOPIC", "datetime:timezone.utc"))
+VERSION_TYPE: type = resolve_topic(os.getenv("VERSION_TYPE_TOPIC", "builtins:int"))
 
 
-# TODO: create a Protocol here somehow to move this class to our app
-@dataclass(frozen=True)
-class StrVersion:
-    _str_value: str
-    _int_value: int
+@runtime_checkable
+class VersionProtocol(Protocol):
+    @classmethod
+    @abc.abstractmethod
+    def initial(cls) -> "VersionProtocol":
+        pass
 
-    def __add__(self, other) -> Version:
-        if isinstance(other, int):
-            return StrVersion(self._str_value, self._int_value + other)
-        elif isinstance(other, StrVersion):
-            if self._str_value != other._str_value:
-                raise ValueError("The str value must be the same")
+    @abc.abstractmethod
+    def next(self) -> "VersionProtocol":
+        pass
 
-            return StrVersion(self._str_value, self._int_value + other._int_value)
+    @classmethod
+    @abc.abstractmethod
+    def decode(cls, value: str) -> "VersionProtocol":
+        pass
 
-        raise NotImplementedError
-
-    def __sub__(self, other) -> Version:
-        if isinstance(other, int):
-            return StrVersion(self._str_value, self._int_value - other)
-        elif isinstance(other, StrVersion):
-            if self._str_value != other._str_value:
-                raise ValueError("The str value must be the same")
-
-            return StrVersion(self._str_value, self._int_value - other._int_value)
-
-        raise NotImplementedError
-
-    def __mod__(self, other) -> int:
-        if not isinstance(other, int):
-            raise NotImplementedError
-
-        return self._int_value % other
-
-    def __eq__(self, other) -> bool:
-        if isinstance(other, int):
-            return self._int_value == other
-        elif isinstance(other, StrVersion):
-            return (
-                self._str_value == other._str_value
-                and self._int_value == other._int_value
-            )
-
-        raise NotImplementedError
-
-    def __le__(self, other) -> bool:
-        if isinstance(other, int):
-            return self._int_value <= other
-        elif isinstance(other, StrVersion):
-            if self._str_value != other._str_value:
-                raise ValueError("The str value must be the same")
-
-            return self._int_value <= other._int_value
-
-        raise NotImplementedError
-
-    def __gt__(self, other) -> bool:
-        if isinstance(other, int):
-            return self._int_value > other
-        elif isinstance(other, StrVersion):
-            if self._str_value != other._str_value:
-                raise ValueError("The str value must be the same")
-
-            return self._int_value > other._int_value
-
-        raise NotImplementedError
-
-    def __str__(self) -> str:
-        return f"{self._str_value}:{self._int_value}"
-
-    def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__, str(self))
+    @abc.abstractmethod
+    def encode(self) -> str:
+        pass
 
 
-Version = Union[StrVersion, int]
+Version = Union[VersionProtocol, int]
 
 
-def build_version(value: str | int) -> Version:
-    if isinstance(value, int) or ":" not in value:
+def build_version(value: Any) -> Version:
+    if VERSION_TYPE == int:
         return int(value)
 
-    str_value, int_value = value.split(":")
-    return StrVersion(str_value, int(int_value))
+    return VERSION_TYPE.decode(value)
+
+
+def generate_next_version(value: Version) -> Version:
+    if isinstance(value, int):
+        return value + 1
+
+    return value.next()
 
 
 @runtime_checkable
@@ -317,7 +271,7 @@ class CanMutateAggregate(HasOriginatorIDVersion, CanCreateTimestamp):
             raise OriginatorIDError(self.originator_id, aggregate.id)
 
         # Check this event is the next in its sequence.
-        next_version = aggregate.version + 1
+        next_version = generate_next_version(aggregate.version)
         if self.originator_version != next_version:
             raise OriginatorVersionError(self.originator_version, next_version)
 
@@ -1433,7 +1387,10 @@ class Aggregate(metaclass=MetaAggregate):
 
     @classmethod
     def _init_version(cls) -> Version:
-        return cls.INITIAL_VERSION
+        if VERSION_TYPE == int:
+            return cls.INITIAL_VERSION
+
+        return VERSION_TYPE.initial()
 
     @property
     def id(self) -> UUID:
@@ -1507,7 +1464,7 @@ class Aggregate(metaclass=MetaAggregate):
         # Construct the domain event as the
         # next in the aggregate's sequence.
         # Use counting to generate the sequence.
-        next_version = self.version + 1
+        next_version = generate_next_version(self.version)
 
         # Impose the required common domain event attribute values.
         kwargs = kwargs.copy()

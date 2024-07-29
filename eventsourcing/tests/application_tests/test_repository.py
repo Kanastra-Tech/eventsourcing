@@ -12,7 +12,7 @@ from eventsourcing.persistence import (
     JSONTranscoder,
     Mapper,
     UUIDAsHex,
-    StrVersionAsStr,
+    VersionProtocolAsStr,
 )
 from eventsourcing.popo import POPOAggregateRecorder
 from eventsourcing.sqlite import SQLiteAggregateRecorder, SQLiteDatastore
@@ -28,7 +28,7 @@ class TestRepository(TestCase):
         transcoder.register(DecimalAsStr())
         transcoder.register(DatetimeAsISO())
         transcoder.register(EmailAddressAsStr())
-        transcoder.register(StrVersionAsStr())
+        transcoder.register(VersionProtocolAsStr())
 
         event_recorder = SQLiteAggregateRecorder(SQLiteDatastore(":memory:"))
         event_recorder.create_table()
@@ -211,7 +211,7 @@ class TestRepository(TestCase):
         transcoder.register(DecimalAsStr())
         transcoder.register(DatetimeAsISO())
         transcoder.register(EmailAddressAsStr())
-        transcoder.register(StrVersionAsStr())
+        transcoder.register(VersionProtocolAsStr())
 
         event_recorder = SQLiteAggregateRecorder(SQLiteDatastore(":memory:"))
         event_recorder.create_table()

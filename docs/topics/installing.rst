@@ -177,6 +177,15 @@ to run PostgreSQL in a Docker container, feel free to do that too.
     $ psql eventsourcing
     postgres=# CREATE SCHEMA myschema AUTHORIZATION eventsourcing;
 
+For example, if you are using Docker, you can run the following commands:
+
+::
+    $ docker run -d --name=eventsourcing_tests -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres
+    $ docker exec -it eventsourcing_tests psql postgres -c "CREATE DATABASE eventsourcing;"
+    $ docker exec -it eventsourcing_tests psql postgres -c "CREATE USER eventsourcing WITH PASSWORD 'eventsourcing';"
+    $ docker exec -it eventsourcing_tests psql postgres -c "ALTER DATABASE eventsourcing OWNER TO eventsourcing;"
+    $ docker exec -it eventsourcing_tests psql eventsourcing -c "CREATE SCHEMA myschema AUTHORIZATION eventsourcing;"
+
 
 You can also check the syntax and static types are correct with the
 following command (which uses isort, Black, Flake8, and mypy).

@@ -24,7 +24,7 @@ import psycopg2.extras
 from psycopg2.errorcodes import DUPLICATE_PREPARED_STATEMENT
 from psycopg2.extensions import AsIs, connection, cursor, register_adapter
 
-from eventsourcing.domain import StrVersion
+from eventsourcing.domain import VersionProtocol
 from eventsourcing.persistence import (
     AggregateRecorder,
     ApplicationRecorder,
@@ -51,7 +51,7 @@ from eventsourcing.utils import Environment, retry, strtobool
 psycopg2.extras.register_uuid()
 
 
-register_adapter(StrVersion, lambda version: AsIs(str(version)))
+register_adapter(VersionProtocol, lambda version: AsIs(version.encode()))
 
 
 class PostgresCursor(Cursor):
