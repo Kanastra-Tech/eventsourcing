@@ -198,24 +198,6 @@ class DatetimeAsISO(Transcoding):
         return datetime.fromisoformat(data)
 
 
-class VersionProtocolAsStr(Transcoding):
-    """
-    Transcoding that represents :class:`VersionProtocol` objects as strings.
-    """
-
-    type = VersionProtocol
-    name = "version"
-
-    def encode(self, obj: VersionProtocol) -> str:
-        topic = get_topic(obj.__class__)
-        return f"{topic}||{obj.encode()}"
-
-    def decode(self, data: str) -> VersionProtocol:
-        assert isinstance(data, str)
-        topic, version = data.split("||")
-        return resolve_topic(topic).decode(version)
-
-
 @dataclass(frozen=True)
 class StoredEvent:
     """

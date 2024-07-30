@@ -1186,15 +1186,18 @@ class TestVersionProtocol(TestCase):
     def test_trigger_event(self):
         eventsourcing.domain.VERSION_TYPE = self.DecimalVersion
 
-        a = Aggregate()
+        try:
+            a = Aggregate()
 
-        # Check the aggregate can trigger further events.
-        a.trigger_event(AggregateEvent)
-        self.assertLess(a.created_on, a.modified_on)
+            # Check the aggregate can trigger further events.
+            a.trigger_event(AggregateEvent)
+            self.assertLess(a.created_on, a.modified_on)
 
-        pending = a.collect_events()
-        self.assertEqual(len(pending), 2)
-        self.assertIsInstance(pending[0], AggregateCreated)
-        self.assertEqual(pending[0].originator_version, self.DecimalVersion(0.0))
-        self.assertIsInstance(pending[1], AggregateEvent)
-        self.assertEqual(pending[1].originator_version, self.DecimalVersion(0.1))
+            pending = a.collect_events()
+            self.assertEqual(len(pending), 2)
+            self.assertIsInstance(pending[0], AggregateCreated)
+            self.assertEqual(pending[0].originator_version, self.DecimalVersion(0.0))
+            self.assertIsInstance(pending[1], AggregateEvent)
+            self.assertEqual(pending[1].originator_version, self.DecimalVersion(0.1))
+        finally:
+            eventsourcing.domain.VERSION_TYPE = int
