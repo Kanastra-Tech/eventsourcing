@@ -1694,8 +1694,7 @@ class DomainService(abc.ABC):
         """
         items = changed_aggregates.get()
         collected = []
-        while items:
-            item = items.popitem()[1]
+        for _, item in items.items():
             collected.append(item)
         return collected
 

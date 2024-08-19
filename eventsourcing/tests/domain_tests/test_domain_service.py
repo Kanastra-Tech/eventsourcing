@@ -1,3 +1,6 @@
+
+from unittest.case import TestCase
+
 from eventsourcing.domain import Aggregate, DomainService, event
 
 
@@ -20,9 +23,12 @@ class SampleDomainService(DomainService):
         agg2.update(40)
 
 
-def test_collect_aggregates():
-    with SampleDomainService() as service:
-        service.execute()
+class TestDomainService(TestCase):
+    def test_collect_aggregates(self):
+        with SampleDomainService() as service:
+            service.execute()
 
-        changes = service.collect_changes()
-        assert len(changes) == 2
+            changes = service.collect_changes()
+            assert len(changes) == 2
+            assert changes[0].property == 20
+            assert changes[1].property == 40
