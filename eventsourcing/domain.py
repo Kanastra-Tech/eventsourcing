@@ -1685,7 +1685,7 @@ changed_aggregates: ContextVar[Optional[Dict[UUID, Aggregate]]] = ContextVar(
 # TODO: nested services?
 class DomainService(abc.ABC):
     @abc.abstractmethod
-    def execute(self):
+    def execute(self) -> Any:
         pass
 
     def collect_changes(self):
