@@ -24,6 +24,7 @@ import psycopg2.extras
 from psycopg2.errorcodes import DUPLICATE_PREPARED_STATEMENT
 from psycopg2.extensions import AsIs, connection, cursor, register_adapter
 
+from eventsourcing.domain import build_version
 from eventsourcing.persistence import (
     AggregateRecorder,
     ApplicationRecorder,
@@ -519,7 +520,7 @@ class PostgresAggregateRecorder(AggregateRecorder):
                     stored_events.append(
                         StoredEvent(
                             originator_id=row["originator_id"],
-                            originator_version=row["originator_version"],
+                            originator_version=build_version(row["originator_version"]),
                             topic=row["topic"],
                             state=bytes(row["state"]),
                         )
@@ -619,7 +620,7 @@ class PostgresApplicationRecorder(PostgresAggregateRecorder, ApplicationRecorder
                         Notification(
                             id=row["notification_id"],
                             originator_id=row["originator_id"],
-                            originator_version=row["originator_version"],
+                            originator_version=build_version(row["originator_version"]),
                             topic=row["topic"],
                             state=bytes(row["state"]),
                         )
