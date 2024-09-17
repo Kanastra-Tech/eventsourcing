@@ -32,3 +32,23 @@ class TestDomainService(TestCase):
             assert len(changes) == 2
             assert changes[0].property == 20
             assert changes[1].property == 40
+
+    def test_nested(self):
+        with SampleDomainService() as service:
+            service.execute()
+            with SampleDomainService() as service:
+                service.execute()
+
+            changes = service.collect_changes()
+            assert len(changes) == 4
+            assert changes[0].property == 20
+            assert changes[1].property == 40
+            assert changes[2].property == 20
+            assert changes[3].property == 40
+
+        # Asserting if changes are not collected after service is closed
+        with SampleDomainService() as service:
+            service.execute()
+
+            changes = service.collect_changes()
+            assert len(changes) == 2

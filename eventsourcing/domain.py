@@ -1682,8 +1682,9 @@ changed_aggregates: ContextVar[Optional[Dict[UUID, Aggregate]]] = ContextVar(
 )
 
 
-# TODO: nested services?
 class DomainService(abc.ABC):
+    nested: bool = False
+
     @abc.abstractmethod
     def execute(self) -> Any:
         pass
@@ -1699,11 +1700,16 @@ class DomainService(abc.ABC):
         return collected
 
     def __enter__(self):
-        changed_aggregates.set(dict())
+        if self.is_inside():
+            self.nested = True
+        else:
+            changed_aggregates.set(dict())
+
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        changed_aggregates.set(None)
+        if not self.nested:
+            changed_aggregates.set(None)
 
     @staticmethod
     def is_inside() -> bool:
