@@ -11,6 +11,7 @@ import psycopg_pool
 from psycopg import Connection, Cursor
 from psycopg.rows import DictRow, dict_row
 
+from eventsourcing.domain import build_version
 from eventsourcing.persistence import (
     AggregateRecorder,
     ApplicationRecorder,

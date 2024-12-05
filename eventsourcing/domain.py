@@ -61,10 +61,6 @@ def build_version(value: Any) -> Version:
         return int(value)
     return VERSION_TYPE.decode(value)
 
-def generate_next_version(value: Version) -> Version:
-    if isinstance(value, int):
-        return value + 1
-    return value.next()
 
 @runtime_checkable
 class DomainEventProtocol(Protocol):
@@ -223,7 +219,25 @@ class HasOriginatorIDVersion:
     """Version identifying the version of the aggregate when the event occurred."""
 
 
-class CanMutateAggregate(HasOriginatorIDVersion, CanCreateTimestamp):
+class CanGenerateNextVersion:
+    """
+    Provides a generate_next_version() method to subclasses.
+    """
+
+    @staticmethod
+    def generate_next_version(version: Version) -> Version:
+        """
+        Generates the next version number after the given ``version`` argument.
+        """
+        if isinstance(version, int):
+            return version + 1
+
+        return version.next()
+
+
+class CanMutateAggregate(
+    HasOriginatorIDVersion, CanCreateTimestamp, CanGenerateNextVersion
+):
     """
     Implements a :func:`~eventsourcing.domain.CanMutateAggregate.mutate`
     method that evolves the state of an aggregate.
@@ -259,7 +273,7 @@ class CanMutateAggregate(HasOriginatorIDVersion, CanCreateTimestamp):
             raise OriginatorIDError(self.originator_id, aggregate.id)
 
         # Check this event is the next in its sequence.
-        next_version = generate_next_version(aggregate.version)
+        next_version = self.generate_next_version(aggregate.version)
         if self.originator_version != next_version:
             raise OriginatorVersionError(self.originator_version, next_version)
 
@@ -1451,7 +1465,7 @@ class Aggregate(metaclass=MetaAggregate):
         # Construct the domain event as the
         # next in the aggregate's sequence.
         # Use counting to generate the sequence.
-        next_version = generate_next_version(self.version)
+        next_version = event_class.generate_next_version(self.version)
 
         # Impose the required common domain event attribute values.
         kwargs = kwargs.copy()
@@ -1670,9 +1684,7 @@ changed_aggregates: ContextVar[Optional[Dict[UUID, Aggregate]]] = ContextVar(
 
 
 class DomainService(abc.ABC):
-    @abc.abstractmethod
-    def execute(self):
-        pass
+    nested: bool = False
 
     def collect_changes(self):
         """
@@ -1685,11 +1697,16 @@ class DomainService(abc.ABC):
         return collected
 
     def __enter__(self):
-        changed_aggregates.set(dict())
+        if self.is_inside():
+            self.nested = True
+        else:
+            changed_aggregates.set(dict())
+
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        changed_aggregates.set(None)
+        if not self.nested:
+            changed_aggregates.set(None)
 
     @staticmethod
     def is_inside() -> bool:
