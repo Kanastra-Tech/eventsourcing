@@ -26,7 +26,7 @@ from typing import (
 from uuid import UUID
 from warnings import warn
 
-from eventsourcing.domain import DomainEventProtocol, EventSourcingError
+from eventsourcing.domain import DomainEventProtocol, EventSourcingError, Version
 from eventsourcing.utils import (
     Environment,
     TopicError,
@@ -210,7 +210,7 @@ class StoredEvent:
     """
 
     originator_id: uuid.UUID
-    originator_version: int
+    originator_version: Version
     topic: str
     state: bytes
 
@@ -425,8 +425,8 @@ class AggregateRecorder(ABC):
         self,
         originator_id: UUID,
         *,
-        gt: int | None = None,
-        lte: int | None = None,
+        gt: Version | None = None,
+        lte: Version | None = None,
         desc: bool = False,
         limit: int | None = None,
     ) -> List[StoredEvent]:
@@ -552,8 +552,8 @@ class EventStore:
         self,
         originator_id: UUID,
         *,
-        gt: int | None = None,
-        lte: int | None = None,
+        gt: Version | None = None,
+        lte: Version | None = None,
         desc: bool = False,
         limit: int | None = None,
     ) -> Iterator[DomainEventProtocol]:

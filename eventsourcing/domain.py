@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import abc
 import inspect
 import os
+from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import datetime, tzinfo
 from functools import lru_cache
@@ -14,6 +16,7 @@ from typing import (
     Generic,
     Iterable,
     List,
+    Optional,
     Protocol,
     Sequence,
     Tuple,
@@ -29,7 +32,39 @@ from uuid import UUID, uuid4
 from eventsourcing.utils import get_method_name, get_topic, resolve_topic
 
 TZINFO: tzinfo = resolve_topic(os.getenv("TZINFO_TOPIC", "datetime:timezone.utc"))
+VERSION_TYPE: type = resolve_topic(os.getenv("VERSION_TYPE_TOPIC", "builtins:int"))
 
+@runtime_checkable
+class VersionProtocol(Protocol):
+    @classmethod
+    @abc.abstractmethod
+    def initial(cls) -> "VersionProtocol":
+        pass
+
+    @abc.abstractmethod
+    def next(self) -> "VersionProtocol":
+        pass
+
+    @classmethod
+    @abc.abstractmethod
+    def decode(cls, value: str) -> "VersionProtocol":
+        pass
+
+    @abc.abstractmethod
+    def encode(self) -> str:
+        pass
+
+Version = Union[VersionProtocol, int]
+
+def build_version(value: Any) -> Version:
+    if VERSION_TYPE == int:
+        return int(value)
+    return VERSION_TYPE.decode(value)
+
+def generate_next_version(value: Version) -> Version:
+    if isinstance(value, int):
+        return value + 1
+    return value.next()
 
 @runtime_checkable
 class DomainEventProtocol(Protocol):
@@ -50,9 +85,9 @@ class DomainEventProtocol(Protocol):
         """
 
     @property
-    def originator_version(self) -> int:
+    def originator_version(self) -> Version:
         """
-        Integer identifying the version of the aggregate when the event occurred.
+        Version identifying the version of the aggregate when the event occurred.
         """
 
 
@@ -77,15 +112,15 @@ class MutableAggregateProtocol(Protocol):
         """
 
     @property
-    def version(self) -> int:
+    def version(self) -> Version:
         """
-        Mutable aggregates have a read-write version that is an int.
+        Mutable aggregates have a read-write version that is a Version.
         """
 
     @version.setter
-    def version(self, value: int) -> None:
+    def version(self, value: Version) -> None:
         """
-        Mutable aggregates have a read-write version that is an int.
+        Mutable aggregates have a read-write version that is a Version.
         """
 
 
@@ -107,9 +142,9 @@ class ImmutableAggregateProtocol(Protocol):
         """
 
     @property
-    def version(self) -> int:
+    def version(self) -> Version:
         """
-        Immutable aggregates have a read-only version that is an int.
+        Immutable aggregates have a read-only version that is a Version.
         """
 
 
@@ -184,8 +219,8 @@ class HasOriginatorIDVersion:
 
     originator_id: UUID
     """UUID identifying an aggregate to which the event belongs."""
-    originator_version: int
-    """Integer identifying the version of the aggregate when the event occurred."""
+    originator_version: Version
+    """Version identifying the version of the aggregate when the event occurred."""
 
 
 class CanMutateAggregate(HasOriginatorIDVersion, CanCreateTimestamp):
@@ -224,7 +259,7 @@ class CanMutateAggregate(HasOriginatorIDVersion, CanCreateTimestamp):
             raise OriginatorIDError(self.originator_id, aggregate.id)
 
         # Check this event is the next in its sequence.
-        next_version = aggregate.version + 1
+        next_version = generate_next_version(aggregate.version)
         if self.originator_version != next_version:
             raise OriginatorVersionError(self.originator_version, next_version)
 
@@ -326,8 +361,8 @@ class DomainEvent(CanCreateTimestamp, metaclass=MetaDomainEvent):
 
     originator_id: UUID
     """UUID identifying an aggregate to which the event belongs."""
-    originator_version: int
-    """Integer identifying the version of the aggregate when the event occurred."""
+    originator_version: Version
+    """Version identifying the version of the aggregate when the event occurred."""
     timestamp: datetime
     """Timezone-aware :class:`datetime` object representing when an event occurred."""
 
@@ -1303,7 +1338,7 @@ class Aggregate(metaclass=MetaAggregate):
         kwargs.update(
             originator_topic=get_topic(cls),
             originator_id=originator_id,
-            originator_version=cls.INITIAL_VERSION,
+            originator_version=cls._init_version(),
         )
         if kwargs.get("timestamp") is None:
             kwargs["timestamp"] = event_class.create_timestamp()
@@ -1320,10 +1355,13 @@ class Aggregate(metaclass=MetaAggregate):
         # Append the domain event to pending list.
         agg.pending_events.append(created_event)
         # Return the aggregate.
+        # Append the aggregate to pending list, if running inside a DomainService
+        if DomainService.is_inside():
+            DomainService.add_aggregate(agg)
         return agg
 
     def __base_init__(
-        self, originator_id: UUID, originator_version: int, timestamp: datetime
+        self, originator_id: UUID, originator_version: Version, timestamp: datetime
     ) -> None:
         """
         Initialises an aggregate object with an :data:`id`, a :data:`version`
@@ -1335,6 +1373,12 @@ class Aggregate(metaclass=MetaAggregate):
         self._modified_on = timestamp
         self._pending_events: List[CanMutateAggregate] = []
 
+    @classmethod
+    def _init_version(cls) -> Version:
+        if VERSION_TYPE == int:
+            return cls.INITIAL_VERSION
+        return VERSION_TYPE.initial()
+
     @property
     def id(self) -> UUID:
         """
@@ -1343,14 +1387,14 @@ class Aggregate(metaclass=MetaAggregate):
         return self._id
 
     @property
-    def version(self) -> int:
+    def version(self) -> Version:
         """
-        The version number of the aggregate.
+        The version of the aggregate.
         """
         return self._version
 
     @version.setter
-    def version(self, version: int) -> None:
+    def version(self, version: Version) -> None:
         self._version = version
 
     @property
@@ -1407,7 +1451,7 @@ class Aggregate(metaclass=MetaAggregate):
         # Construct the domain event as the
         # next in the aggregate's sequence.
         # Use counting to generate the sequence.
-        next_version = self.version + 1
+        next_version = generate_next_version(self.version)
 
         # Impose the required common domain event attribute values.
         kwargs = kwargs.copy()
@@ -1428,6 +1472,9 @@ class Aggregate(metaclass=MetaAggregate):
         new_event.mutate(self)
         # Append the domain event to pending list.
         self._pending_events.append(new_event)
+        # Append the aggregate to pending list, if running inside a DomainService
+        if DomainService.is_inside():
+            DomainService.add_aggregate(self)
 
     def collect_events(self) -> Sequence[CanMutateAggregate]:
         """
@@ -1607,7 +1654,7 @@ class Snapshot(CanSnapshotAggregate, DomainEvent):
     Constructor arguments:
 
     :param UUID originator_id: ID of originating aggregate.
-    :param int originator_version: version of originating aggregate.
+    :param Version originator_version: version of originating aggregate.
     :param datetime timestamp: date-time of the event
     :param str topic: string that includes a class and its module
     :param dict state: version of originating aggregate.
@@ -1615,3 +1662,42 @@ class Snapshot(CanSnapshotAggregate, DomainEvent):
 
     topic: str
     state: Dict[str, Any]
+
+
+changed_aggregates: ContextVar[Optional[Dict[UUID, Aggregate]]] = ContextVar(
+    "changed_aggregates", default=None
+)
+
+
+class DomainService(abc.ABC):
+    @abc.abstractmethod
+    def execute(self):
+        pass
+
+    def collect_changes(self):
+        """
+        List aggregates that had changes while the service were executing
+        """
+        items = changed_aggregates.get()
+        collected = []
+        for _, item in items.items():
+            collected.append(item)
+        return collected
+
+    def __enter__(self):
+        changed_aggregates.set(dict())
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        changed_aggregates.set(None)
+
+    @staticmethod
+    def is_inside() -> bool:
+        return changed_aggregates.get() is not None
+
+    @classmethod
+    def add_aggregate(cls, aggregate: Aggregate) -> None:
+        if not cls.is_inside():
+            return
+        items = changed_aggregates.get()
+        items[aggregate.id] = aggregate

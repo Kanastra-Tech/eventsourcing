@@ -40,6 +40,7 @@ from eventsourcing.domain import (
     TDomainEvent,
     TMutableOrImmutableAggregate,
     create_utc_datetime_now,
+    Version,
 )
 from eventsourcing.persistence import (
     ApplicationRecorder,
@@ -254,7 +255,7 @@ class Repository:
         self,
         aggregate_id: UUID,
         *,
-        version: int | None = None,
+        version: Version | None = None,
         projector_func: ProjectorFunction[
             TMutableOrImmutableAggregate, TDomainEvent
         ] = project_aggregate,
@@ -313,10 +314,10 @@ class Repository:
     def _reconstruct_aggregate(
         self,
         aggregate_id: UUID,
-        version: int | None,
+        version: Version | None,
         projector_func: ProjectorFunction[TMutableOrImmutableAggregate, TDomainEvent],
     ) -> TMutableOrImmutableAggregate:
-        gt: int | None = None
+        gt: Version | None = None
 
         if self.snapshot_store is not None:
             # Try to get a snapshot.
@@ -844,7 +845,7 @@ class Application:
     def take_snapshot(
         self,
         aggregate_id: UUID,
-        version: int | None = None,
+        version: Version | None = None,
         projector_func: ProjectorFunction[
             TMutableOrImmutableAggregate, TDomainEvent
         ] = project_aggregate,
@@ -936,7 +937,7 @@ class EventSourcedLog(Generic[TDomainEvent]):
 
     def trigger_event(
         self,
-        next_originator_version: int | None = None,
+        next_originator_version: Version | None = None,
         **kwargs: Any,
     ) -> TDomainEvent:
         """
@@ -951,7 +952,7 @@ class EventSourcedLog(Generic[TDomainEvent]):
     def _trigger_event(
         self,
         logged_cls: Type[T] | None,
-        next_originator_version: int | None = None,
+        next_originator_version: Version | None = None,
         **kwargs: Any,
     ) -> T:
         """
@@ -992,8 +993,8 @@ class EventSourcedLog(Generic[TDomainEvent]):
     def get(
         self,
         *,
-        gt: int | None = None,
-        lte: int | None = None,
+        gt: Version | None = None,
+        lte: Version | None = None,
         desc: bool = False,
         limit: int | None = None,
     ) -> Iterator[TDomainEvent]:

@@ -4,6 +4,7 @@ import logging
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any, Callable, Iterator, List, Sequence
 
+from eventsourcing.domain import build_version
 import psycopg
 import psycopg.errors
 import psycopg_pool
@@ -329,7 +330,7 @@ class PostgresAggregateRecorder(AggregateRecorder):
             return [
                 StoredEvent(
                     originator_id=row["originator_id"],
-                    originator_version=row["originator_version"],
+                    originator_version=build_version(row["originator_version"]),
                     topic=row["topic"],
                     state=bytes(row["state"]),
                 )
@@ -408,7 +409,7 @@ class PostgresApplicationRecorder(PostgresAggregateRecorder, ApplicationRecorder
                 Notification(
                     id=row["notification_id"],
                     originator_id=row["originator_id"],
-                    originator_version=row["originator_version"],
+                    originator_version=build_version(row["originator_version"]),
                     topic=row["topic"],
                     state=bytes(row["state"]),
                 )
