@@ -1691,9 +1691,12 @@ class DomainService(abc.ABC):
         List aggregates that had changes while the service were executing
         """
         items = changed_aggregates.get()
+        assert items is not None, "No DomainService context"
+
         collected = []
         for _, item in items.items():
             collected.append(item)
+        items.clear()
         return collected
 
     def __enter__(self):
@@ -1717,4 +1720,6 @@ class DomainService(abc.ABC):
         if not cls.is_inside():
             return
         items = changed_aggregates.get()
+        assert items is not None, "No DomainService context"
+
         items[aggregate.id] = aggregate
